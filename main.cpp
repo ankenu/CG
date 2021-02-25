@@ -24,11 +24,11 @@ struct player
     float           y = 0.f;
     float           side = 0.15f;
     bool            keys[1024]{};
-    float           step = 8.f/WINDOW_WIDTH;
+    float           step = 0.4f/WINDOW_WIDTH;
     float           tex_step[2] = {0, 0};
     float           player_size[2] = {64.f/1536.f, 64.f/320.f};
     int             tex_counter = 1;
-    clock_t         key_timer = 0;
+    double          key_timer = 0;
     player_texture  tex;
 }player_loc;
 
@@ -68,10 +68,10 @@ void OnKeyboardPressed(GLFWwindow* window, int key, int scancode, int action, in
 
 void PlayerTextureAnimation (player &player_loc, float y_step, int textures_count)
 {
-    clock_t new_time = clock();
+    double new_time = glfwGetTime ();
     player_loc.tex_step[1] = y_step;
         //cout << player_loc.tex_counter[0] <<endl;
-    if ((new_time - player_loc.key_timer)/(CLOCKS_PER_SEC / 1000) > 70)
+    if ((new_time - player_loc.key_timer) > 0.06)
     {
         if (player_loc.tex_counter < textures_count)
         {
@@ -90,31 +90,31 @@ void PlayerTextureAnimation (player &player_loc, float y_step, int textures_coun
 void processPlayerMovement(player &player_loc)
 {
     bool status = false;
-    clock_t new_time = clock ();
+    double new_time = glfwGetTime ();
 
     if (player_loc.keys[GLFW_KEY_W] || player_loc.keys[GLFW_KEY_UP])
     {
         status = true;
         PlayerTextureAnimation(player_loc, 0, 12);
-        player_loc.y += player_loc.step * ((double)(new_time - player_loc.key_timer) / CLOCKS_PER_SEC);
+        player_loc.y += player_loc.step;
     }
     if (player_loc.keys[GLFW_KEY_S] || player_loc.keys[GLFW_KEY_DOWN])
     {
         status = true;
-        player_loc.y -= player_loc.step * ((double)(new_time - player_loc.key_timer) / CLOCKS_PER_SEC);
+        player_loc.y -= player_loc.step;
         PlayerTextureAnimation(player_loc, 64.f/320.f, 12);
     }
     if (player_loc.keys[GLFW_KEY_A] || player_loc.keys[GLFW_KEY_LEFT])
     {
         status = true;
         PlayerTextureAnimation(player_loc, 128.f/320.f, 12);
-        player_loc.x -= player_loc.step * ((double)(new_time - player_loc.key_timer) / CLOCKS_PER_SEC);
+        player_loc.x -= player_loc.step;
     }
     if (player_loc.keys[GLFW_KEY_D] || player_loc.keys[GLFW_KEY_RIGHT])
     {
         status = true;
         PlayerTextureAnimation(player_loc, 192.f/320.f, 12);
-        player_loc.x += player_loc.step * ((double)(new_time - player_loc.key_timer) / CLOCKS_PER_SEC);
+        player_loc.x += player_loc.step;
     }
     
     if (status == false)
@@ -180,7 +180,7 @@ int main(void)
  
     glfwSetKeyCallback (window, OnKeyboardPressed);  
     /* Loop until the user closes the window */
-    player_loc.key_timer = clock();
+    player_loc.key_timer = glfwGetTime();
     
     GameTexture();
     while (!glfwWindowShouldClose(window))
