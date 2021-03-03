@@ -78,6 +78,7 @@ class Texture
 
             if (delta_time > time_speed)
             {
+                //cout << "delta_time = " << delta_time << "; time_speed = " << time_speed << endl;
                 if (frames[1] < frames[0])
                 {
                     frames[1]++;
@@ -158,11 +159,14 @@ class Object
 //Transparent settings
 void standart_transparent(Object& obj, float y_line, float time_speed)
 {
-    // glEnable(GL_BLEND);
-    // glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     if (time_speed)
+    {
+        //cout << "Here " << time_speed << endl;
         obj.StartObj(y_line, time_speed);
+    }
     else
         obj.StartObj();
 }
@@ -181,7 +185,7 @@ struct keyboard_statistics
 {
     int     keys[1024];
     bool    status;
-    float   step = 6.f/WINDOW_WIDTH;
+    float   step = 3.f;
 
     float   backup_coordinates[2];
     bool    may_go = true;
@@ -202,9 +206,9 @@ void WriteBackUpCoord (float x, float y)
     keyboard.backup_coordinates[1] = y;
 }
 
-void processPlayerMovement(Object &player, float time_speed)
+void processPlayerMovement(Object &player, float time_speed, float time)
 {
-    //double new_time = glfwGetTime ();
+    double delta_time = glfwGetTime () - time;
     if (keyboard.status)
     {
         if (keyboard.may_go == true)
@@ -216,7 +220,7 @@ void processPlayerMovement(Object &player, float time_speed)
                 else
                     standart_transparent(player, 0.f, time_speed);
                 WriteBackUpCoord(player.coordinates[0], player.coordinates[1]);
-                player.coordinates[1] += keyboard.step;
+                player.coordinates[1] += keyboard.step * delta_time;
             }
             else if (keyboard.keys[GLFW_KEY_S] || keyboard.keys[GLFW_KEY_DOWN])
             {
@@ -225,7 +229,7 @@ void processPlayerMovement(Object &player, float time_speed)
                 else
                     standart_transparent(player, 64.f/320.f, time_speed);
                 WriteBackUpCoord(player.coordinates[0], player.coordinates[1]);
-                player.coordinates[1] -= keyboard.step;
+                player.coordinates[1] -= keyboard.step * delta_time;
             }
             else if (keyboard.keys[GLFW_KEY_A] || keyboard.keys[GLFW_KEY_LEFT])
             {
@@ -234,7 +238,7 @@ void processPlayerMovement(Object &player, float time_speed)
                 else
                     standart_transparent(player, 128.f/320.f, time_speed);
                 WriteBackUpCoord(player.coordinates[0], player.coordinates[1]);
-                player.coordinates[0] -= keyboard.step;
+                player.coordinates[0] -= keyboard.step * delta_time;
             }
             else if (keyboard.keys[GLFW_KEY_D] || keyboard.keys[GLFW_KEY_RIGHT])
             {
@@ -243,7 +247,7 @@ void processPlayerMovement(Object &player, float time_speed)
                 else
                     standart_transparent(player, 192.f/320.f, time_speed);
                 WriteBackUpCoord(player.coordinates[0], player.coordinates[1]);
-                player.coordinates[0] += keyboard.step;
+                player.coordinates[0] += keyboard.step * delta_time;
             }
             else
                 standart_transparent(player, 256.f/320.f, 0.09f);
@@ -261,10 +265,10 @@ void processPlayerMovement(Object &player, float time_speed)
 }
 
 //keyboard end
-bool MayGo(Object &map, Object &player)
+bool MayGo(Object &map, Object &player, array <float, 8> player_offset)
 {
     float p_x = player.coordinates[0], p_y = player.coordinates[1], p_half_side_x = player.sides[0]/2.f, p_half_side_y = player.sides[1]/2.f;
-    float player_coordinates[4][2] = {{p_x - p_half_side_x, p_y + p_half_side_y}, {p_x + p_half_side_x, p_y + p_half_side_y}, {p_x - p_half_side_x, p_y - p_half_side_y}, {p_x + p_half_side_x, p_y - p_half_side_y}};
+    float player_coordinates[4][2] = {{p_x - p_half_side_x + player_offset[0], p_y + p_half_side_y + player_offset[1]}, {p_x + p_half_side_x + player_offset[2], p_y + p_half_side_y + player_offset[3]}, {p_x - p_half_side_x + player_offset[4], p_y - p_half_side_y + player_offset[5]}, {p_x + p_half_side_x + player_offset[6], p_y - p_half_side_y + player_offset[7]}};
 
     float m_x = map.coordinates[0], m_y = map.coordinates[1], m_half_side_x = map.sides[0]/2.f, m_half_side_y = map.sides[1]/2.f;
     float map_block[2][2] = {{m_x - m_half_side_x, m_y + m_half_side_y}, {m_x + m_half_side_x, m_y - m_half_side_y}};
@@ -311,12 +315,12 @@ typedef struct
     array <float, 5>    way_coord_x;
     vector<int>         way_index;
 
-    float         darkness_step = 200.f/12000.f;
-    array<int, 2>           darkness_frames = {60, 2};
-    array<int, 2>         darkness_block_ij = {0, 0};
-    array<float, 2>       darkness_offset = {0.f, 0.f};
+    float               darkness_step = 200.f/12000.f;
+    array<int, 2>       darkness_frames = {60, 2};
+    array<int, 2>       darkness_block_ij = {0, 0};
+    array<float, 2>     darkness_offset = {0.f, 0.f};
     bool                darkness_status = false;  
-    double              darkness_old_time;  
+    array<float, 3>     darkness_time = {0.f, 0.f, 0.09f};  //new_time, time, time_frames
 }MapGen;
 
 
@@ -327,7 +331,9 @@ private:
     array<float, 2>     map_size;
     array<string, 16>   symbols;
     bool                player_start;
+
     Object              darkness;
+    Object              chest;
 
     MapGen              mapg;    
 public:
@@ -340,12 +346,18 @@ public:
         darkness.TexInstall("resources/eye.png");
         darkness.TexSet({200.f/12000.f, 200.f/200.f}, {0.f, 0.f}, {60, 1});
 
+        chest.sides = {0.125f * 1.2, 0.125f * 1.2};
+        chest.TexInstall("resources/chest.png");
+        chest.TexSet({72.f/288.f, 72.f/288.f}, {0.f, 0.f}, {4, 1});
+
         //Для генерации
         srand(clock());
         mapg.grass_coord_x = {96.f/map_size[0], 112.f/map_size[0], 128.f/map_size[0], 144.f/map_size[0]};
         mapg.grass_coord_y = {48.f/map_size[1], 64.f/map_size[1]};
         
         mapg.way_coord_x = {0.f, 16.f/map_size[0], 0.f, 32.f/map_size[0], 0.f};
+
+        mapg.darkness_time[1] = glfwGetTime();
         //Установка тектуры
         map.TexInstall(texture_path);
     }
@@ -358,85 +370,102 @@ public:
 
     void DrawMap(Object& player)
     {
-        int grass_num = 0, way_num = 0;
+        int grass_num = 0, way_num = 0, wall_num = 0;
 
         for (int i = 0; i < 16; i++)
         {
 
             for (int j = 0; j < 16; j++)
             {
-                switch (symbols[i][j])
+                switch (symbols[j][i])
                 {
                 case '.':
-                        darkness.coordinates = {map.coordinates[0], map.coordinates[1]};
-                        darkness.TexSet({200.f/12000.f, 200.f/200.f}, {0.f, 0.f}, {1, 1});
-                        standart_transparent(darkness, 0.f/147.f, 0.f);
-                        if (mapg.darkness_status == false)
+                    if (keyboard.status == true && (MayGo(map, player, {player.sides[0]/2.f, -player.sides[1], -player.sides[0]/2.f, -player.sides[1], (player.sides[0]/2.f - 0.01f), 0.f, -(player.sides[0]/2.f - 0.01f), 0.f}) == false))
+                        cout << "Dark " << i <<endl;
+                    darkness.coordinates = {map.coordinates[0], map.coordinates[1]};
+                    darkness.TexSet({200.f/12000.f, 200.f/200.f}, {0.f, 0.f}, {1, 1});
+                    standart_transparent(darkness, 0.f/147.f, 0.f);
+                    if (mapg.darkness_status == false)
+                    {
+                        mapg.darkness_time[0] = glfwGetTime();
+                        if (((mapg.darkness_time[0] -  mapg.darkness_time[1]) > mapg.darkness_time[2]) && ((float)rand()/RAND_MAX * 10000) > 9999)
                         {
-                            if (((float)rand()/RAND_MAX * 10000) > 9999)
-                            {
-                                //cout<< "here"<<endl;
-                                mapg.darkness_status = true;
-                                mapg.darkness_block_ij = {i, j};
-                                mapg.darkness_offset = {200.f/12000.f, 0.f};
-                                mapg.darkness_frames = {60, 2};
-                                
-                                darkness.TexSet({200.f/12000.f, 200.f/200.f}, {mapg.darkness_offset[0], mapg.darkness_offset[1]}, {60, 2});
-                                standart_transparent(darkness, 0.f/200.f, 8.f);
+                            //cout<< "here"<<endl;
+                            mapg.darkness_status = true;
+                            mapg.darkness_block_ij = {i, j};
+                            mapg.darkness_offset = {200.f/12000.f, 0.f};
+                            //mapg.darkness_frames = {60, 2};
+                            
+                            darkness.TexSet({200.f/12000.f, 200.f/200.f}, {mapg.darkness_offset[0], mapg.darkness_offset[1]}, {60, 2});
+                            standart_transparent(darkness, 0.f/200.f, mapg.darkness_time[2]);
 
-                                mapg.darkness_offset[0] += mapg.darkness_step;
-                                mapg.darkness_frames[1]++;
+                            mapg.darkness_time[2] = (3 + rand()%15)/100.f;
+                            mapg.darkness_time[1] = mapg.darkness_time[0];
+                        }
+                        else
+                        {
+                            darkness.TexSet({200.f/12000.f, 200.f/200.f}, {0.f, 0.f}, {1, 1});
+                            standart_transparent(darkness, 0.f/147.f, 0.f);
+                        }
+                    }
+                    else
+                    {
+                        if (mapg.darkness_block_ij[0] == i && mapg.darkness_block_ij[1] == j)
+                        {
+                            if (mapg.darkness_offset[0] < 1.f)
+                            {
+                                //cout << mapg.darkness_offset[0]<<endl;
+                                //darkness.ChangeTexTime(mapg.darkness_old_time);
+                                mapg.darkness_time[0] = glfwGetTime();
+                                if ((mapg.darkness_time[0] -  mapg.darkness_time[1]) > mapg.darkness_time[2])
+                                {
+                                    mapg.darkness_offset[0] += mapg.darkness_step;
+                                    mapg.darkness_frames[1]++;
+                                    mapg.darkness_time[1] = mapg.darkness_time[0];
+                                }
+
+                                darkness.TexSet({200.f/12000.f, 200.f/200.f}, {mapg.darkness_offset[0], mapg.darkness_offset[1]}, {60, 2});
+                                standart_transparent(darkness, 0.f/200.f, mapg.darkness_time[2]);
                             }
                             else
                             {
+                                mapg.darkness_status = false;
+                                mapg.darkness_time[2] *= 30;
                                 darkness.TexSet({200.f/12000.f, 200.f/200.f}, {0.f, 0.f}, {1, 1});
                                 standart_transparent(darkness, 0.f/147.f, 0.f);
                             }
                         }
-                        else
-                        {
-                            if (mapg.darkness_block_ij[0] == i && mapg.darkness_block_ij[1] == j)
-                            {
-                                if (mapg.darkness_offset[0] < 1.f)
-                                {
-                                    //cout << mapg.darkness_offset[0]<<endl;
-                                    darkness.TexSet({200.f/12000.f, 200.f/200.f}, {mapg.darkness_offset[0], mapg.darkness_offset[1]}, {60, mapg.darkness_frames[1]});
-                                    darkness.ChangeTexTime(glfwGetTime ());
-                                    standart_transparent(darkness, 0.f/200.f, 8.f);
-
-                                    mapg.darkness_old_time = darkness.GiveTexTime();
-
-                                    mapg.darkness_offset[0] += mapg.darkness_step;
-                                    mapg.darkness_frames[1]++;
-                                }
-                                else
-                                {
-                                    mapg.darkness_status = false;
-                                    darkness.TexSet({200.f/12000.f, 200.f/200.f}, {0.f, 0.f}, {1, 1});
-                                    standart_transparent(darkness, 0.f/147.f, 0.f);
-                                }
-                            }
-                        }
+                    }
                     break;
                 case '@':
                     if (player_start == false)
                     {
-                        player.coordinates[0] = map.coordinates[0];
-                        player.coordinates[1] = map.coordinates[1];
+                        player.coordinates[0] = map.coordinates[0] - 0.01f;
+                        player.coordinates[1] = map.coordinates[1] + map.sides[1]/2.f;
                         player_start = true;
                     }
+                    if (mapg.way_index.size() < (way_num + 1))
+                            mapg.way_index.push_back(((float)rand()/RAND_MAX * 5));
+                        TexSetAndDo({16.f/map_size[0], 16.f/map_size[1]}, {mapg.way_coord_x[mapg.way_index[way_num]], 48.f/map_size[1]}, {1, 1});
+                        way_num++;
                     break;
                 case '#':
                     //cout << "Map" << endl << map.coordinates[0] << "; " << map.coordinates[1] << endl;
-                    if (keyboard.status == true && (MayGo(map, player) == false))
+                    if (keyboard.status == true && (MayGo(map, player, {0.04f, 0.f, -0.03f, 0.f, 0.04f, 0.f, -0.03f, 0.f}) == false))
                         keyboard.may_go = false;
                     //if (keyboard.may_go == false)
                         //cout << keyboard.may_go <<endl;
                     TexSetAndDo({16.f/map_size[0], 16.f/map_size[1]}, {64.f/map_size[0], 0.f/map_size[1]}, {1, 1});
                     break;
                 case '!':
-                    if (keyboard.status == true && (MayGo(map, player) == false))
-                        keyboard.may_go = false;
+                    if (!wall_num)
+                    {
+                        wall_num++;
+                        if (keyboard.status == true && (MayGo(map, player, {-0.03f, -0.03f, -0.03f, -0.03f, -0.03f, 0.f, -0.3f, 0.f}) == false))
+                            keyboard.may_go = false;
+                    }
+                    else
+                        wall_num = 0;
                     TexSetAndDo({16.f/map_size[0], 16.f/map_size[1]}, {24.f/map_size[0], 16.f/map_size[1]}, {1, 1});
                     break;
                 case 'a':
@@ -488,13 +517,25 @@ public:
                     grass_num++;
                     break;
                 }
+                case 'G':
+                {
+                    if (keyboard.status == true && (MayGo(map, player, {player.sides[0]/2.f, -player.sides[1] + 0.02f, -player.sides[0]/2.f, -player.sides[1] + 0.02f, (player.sides[0]/2.f - 0.02f), 0.02f, -(player.sides[0]/2.f - 0.03f), 0.02f}) == false))
+                        keyboard.may_go = false;
+                    if (keyboard.status == true && keyboard.keys[GLFW_KEY_E] && (MayGo(map, player, {0.f,0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f}) == false))
+                        cout << "Open" << endl;
+                    chest.coordinates[0] = map.coordinates[0];
+                    chest.coordinates[1] = map.coordinates[1] + 0.02;
+                    chest.TexSet({72.f/288.f, 72.f/72.f}, {0.f, 0.f}, {1, 1});
+                    standart_transparent(chest, 0.f, 0.f);
+                    break;
+                }
                 default:
                     break;
                 }
-                map.coordinates[0] += 0.125f;
+                map.coordinates[1] -= 0.125f;
             }
-            map.coordinates[0] = -1.f + 0.125/2;
-            map.coordinates[1] -= 0.125f;
+            map.coordinates[0] += 0.125f;
+            map.coordinates[1] = 1.f - 0.125/2;
         }
         map.coordinates[0] = -1.f + 0.125/2;
         map.coordinates[1] = 1.f - 0.125/2;
@@ -564,11 +605,15 @@ int main()
     rain.TexSet({240.f/14400.f, 240.f/240.f}, {0.f, 0.f}, {60, 1});
     //m.TexSet({16.f/256.f, 16.f/96.f}, {64.f/256.f, 0.f}, {1, 1});
 
+    glfwSwapInterval(1);
+
+    float time;
     while (!glfwWindowShouldClose(window))
     {
         /* Render here */
-        if (fps.t >= 1)
-        {
+        // if (fps.t >= 1)
+        // {
+            time = glfwGetTime();
             glClear(GL_COLOR_BUFFER_BIT);
 
             //processPlayerMovement (player_loc);
@@ -579,13 +624,13 @@ int main()
             //Размер кадра из текстуры
             //standart_transparent(m, 0.f, 0);
             map.DrawMap(player);
-            processPlayerMovement (player, 0.06f);
+            processPlayerMovement (player, 0.06f, time);
             rain_transparent(rain, 0.f, 0.06);
 
-            fps.t = 0.0;
-        }
-        else
-            fps.t += fps.dt;
+        //     fps.t = 0.0;
+        // }
+        // else
+        //     fps.t += fps.dt;
 
         /* Swap front and back buffers */
         glfwSwapBuffers(window);
