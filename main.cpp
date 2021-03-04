@@ -113,6 +113,11 @@ class Object
             tex.TexInstall(texture_path);
         }
 
+        float GetTexOffsetX()
+        {
+            return tex.offset[0];
+        }
+
         void TexSet(array<float, 2> size, array<float, 2> offset, array<int, 2> frames)
         {
             tex.TexSet(size, offset, frames);
@@ -129,16 +134,6 @@ class Object
         {
             tex.TexBind();
             DrawObj();
-        }
-
-        double GiveTexTime()
-        {
-            return (tex.old_time);
-        }
-
-        void ChangeTexTime(double time)
-        {
-            tex.old_time = time;
         }
 
         void DrawObj()
@@ -185,7 +180,7 @@ struct keyboard_statistics
 {
     int     keys[1024];
     bool    status;
-    float   step = 3.f;
+    float   step = 2.f;
 
     float   backup_coordinates[2];
     bool    may_go = true;
@@ -209,6 +204,7 @@ void WriteBackUpCoord (float x, float y)
 void processPlayerMovement(Object &player, float time_speed, float time)
 {
     double delta_time = glfwGetTime () - time;
+
     if (keyboard.status)
     {
         if (keyboard.may_go == true)
@@ -321,7 +317,19 @@ typedef struct
     array<float, 2>     darkness_offset = {0.f, 0.f};
     bool                darkness_status = false;  
     array<float, 3>     darkness_time = {0.f, 0.f, 0.09f};  //new_time, time, time_frames
+
+    int                 chest_open = 0; // 0 - не открыто, 1 - открытие, -1 - открыто
+    array<int, 2>       chest_frames = {4, 1};
+    double              chest_frame_time = 0.09f;
 }MapGen;
+
+// class Interface
+// {
+// private:
+// public:
+//     Object key;
+
+// };
 
 
 class Mapper
@@ -335,6 +343,9 @@ private:
     Object              darkness;
     Object              chest;
 
+    //Interface
+    Object              key;
+
     MapGen              mapg;    
 public:
     Mapper(array<float, 2> c, array<float, 2> s, const char* texture_path, array<float, 2> m_s): 
@@ -347,8 +358,13 @@ public:
         darkness.TexSet({200.f/12000.f, 200.f/200.f}, {0.f, 0.f}, {60, 1});
 
         chest.sides = {0.125f * 1.2, 0.125f * 1.2};
+        chest.coordinates = {-3, -3};
         chest.TexInstall("resources/chest.png");
-        chest.TexSet({72.f/288.f, 72.f/288.f}, {0.f, 0.f}, {4, 1});
+        chest.TexSet({72.f/288.f, 72.f/288.f}, {0.f, 0.f}, {mapg.chest_frames[0], mapg.chest_frames[1]});
+
+        key.sides = {0.125f, 0.125f};
+        key.coordinates = {-3.f, -3.f};
+        key.TexInstall("resources/keys.png");
 
         //Для генерации
         srand(clock());
@@ -385,6 +401,8 @@ public:
                     darkness.coordinates = {map.coordinates[0], map.coordinates[1]};
                     darkness.TexSet({200.f/12000.f, 200.f/200.f}, {0.f, 0.f}, {1, 1});
                     standart_transparent(darkness, 0.f/147.f, 0.f);
+                    if (mapg.chest_open == -1 && i == 0 && j == 1)
+                        break;
                     if (mapg.darkness_status == false)
                     {
                         mapg.darkness_time[0] = glfwGetTime();
@@ -466,7 +484,7 @@ public:
                     }
                     else
                         wall_num = 0;
-                    TexSetAndDo({16.f/map_size[0], 16.f/map_size[1]}, {24.f/map_size[0], 16.f/map_size[1]}, {1, 1});
+                    TexSetAndDo({16.f/map_size[0], 16.f/map_size[1]}, {16.f/map_size[0], 16.f/map_size[1]}, {1, 1});
                     break;
                 case 'a':
                     TexSetAndDo({16.f/map_size[0], 16.f/map_size[1]}, {96.f/map_size[0], 0.f/map_size[1]}, {1, 1});
@@ -519,18 +537,47 @@ public:
                 }
                 case 'G':
                 {
+                    if (chest.coordinates[0] == -3)
+                    {
+                        chest.coordinates[0] = map.coordinates[0];
+                        chest.coordinates[1] = map.coordinates[1] + 0.02;
+                        chest.TexSet({72.f/288.f, 72.f/72.f}, {0.f, 0.f}, {4, 1});
+                    }
                     if (keyboard.status == true && (MayGo(map, player, {player.sides[0]/2.f, -player.sides[1] + 0.02f, -player.sides[0]/2.f, -player.sides[1] + 0.02f, (player.sides[0]/2.f - 0.02f), 0.02f, -(player.sides[0]/2.f - 0.03f), 0.02f}) == false))
                         keyboard.may_go = false;
-                    if (keyboard.status == true && keyboard.keys[GLFW_KEY_E] && (MayGo(map, player, {0.f,0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f}) == false))
-                        cout << "Open" << endl;
-                    chest.coordinates[0] = map.coordinates[0];
-                    chest.coordinates[1] = map.coordinates[1] + 0.02;
-                    chest.TexSet({72.f/288.f, 72.f/72.f}, {0.f, 0.f}, {1, 1});
-                    standart_transparent(chest, 0.f, 0.f);
+                    
+                    if (mapg.chest_open == 0 && keyboard.status == true && keyboard.keys[GLFW_KEY_E] && (MayGo(chest, player, {0.04f,  -player.sides[1] + 0.1f, -0.03f, -player.sides[1] + 0.1f, 0.04f, 0.02f, -0.03f, 0.02f}) == false))
+                    {
+                        standart_transparent(chest, 0.f, mapg.chest_frame_time);
+                        mapg.chest_open = 1;
+                        //cout << "Open" << endl;
+                    }
+                    else
+                    {
+                        if (mapg.chest_open == 1)
+                        {
+                            standart_transparent(chest, 0.f, mapg.chest_frame_time);
+
+                            if (chest.GetTexOffsetX() > chest.sides[0] * mapg.chest_frames[0])
+                                    mapg.chest_open = -1;
+                        }
+                        else
+                            standart_transparent(chest, 0.f, 0.f);
+                    }
                     break;
                 }
                 default:
                     break;
+                }
+                if (mapg.chest_open == -1 && i == 0 && j == 1)
+                {
+                    if (key.coordinates[0] == -3)
+                    {
+                        key.coordinates[0] = map.coordinates[0];
+                        key.coordinates[1] = map.coordinates[1];
+                        key.TexSet({16.f/32.f, 16.f/16.f}, {0.f, 0.f}, {1, 1});
+                    }
+                    standart_transparent(key, 0.f, 0.f);
                 }
                 map.coordinates[1] -= 0.125f;
             }
@@ -588,8 +635,6 @@ int main()
     //координаты объекта, стороны объекта
     Object      player({0.f, 0.f}, {0.2f, 0.2f});
     Object      rain({0.f, 0.f}, {2.f, 2.f});
-    //Object      m({-0.91f, 0.91f}, {0.16f, 0.16f});
-    //Object      map({0.f, 0.f}, {2.f, 2.f}, {720.f/720.f, 720.f/720.f}, {0.f, 0.f}, {1, 1}, "resources/t.png");
 
     Mapper      map({(-1.f + 0.125/2), (1.f - 0.125/2)}, {0.125f, 0.125f}, "resources/map.png", {256.f, 96.f});
 
@@ -598,12 +643,10 @@ int main()
     //путь к текстуре
     player.TexInstall("resources/player.png");
     rain.TexInstall("resources/rain.png");
-    //m.TexInstall("resources/map.png");
 
     //размер текстуры, смещение текстуры, кадры(всего, начальный)
     player.TexSet({64.f/768.f, 64.f/320.f}, {0.f, 0.f}, {12, 1});
     rain.TexSet({240.f/14400.f, 240.f/240.f}, {0.f, 0.f}, {60, 1});
-    //m.TexSet({16.f/256.f, 16.f/96.f}, {64.f/256.f, 0.f}, {1, 1});
 
     glfwSwapInterval(1);
 
@@ -618,11 +661,7 @@ int main()
 
             //processPlayerMovement (player_loc);
             glClearColor(32.0f/255.0f, 39.0f/255.0f, 44.0f/255.0f, 1.0f);
-            //player.StartObj(0.f);
-            //map.StartObj(0.f, 5.f);
 
-            //Размер кадра из текстуры
-            //standart_transparent(m, 0.f, 0);
             map.DrawMap(player);
             processPlayerMovement (player, 0.06f, time);
             rain_transparent(rain, 0.f, 0.06);
