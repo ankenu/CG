@@ -34,12 +34,6 @@ class Texture
         array<float, 2>     size, offset;
         array<int, 2>       frames;
 
-        // Texture(array<float, 2> s, array<float, 2> o, array<int, 2> f): size(s), offset(o), frames(f)
-        // {
-        //     if (frames[0] != frames[1])
-        //         old_time = glfwGetTime ();
-        // }
-
         void TexInstall(const char* texture_path)
         {
             int width, height, cnt;
@@ -83,11 +77,9 @@ class Texture
             delta_time = new_time - old_time;
 
             offset[1] = y_line;
-            //cout << delta_time <<endl;
 
             if (delta_time > time_speed)
             {
-                //cout << "delta_time = " << delta_time << "; time_speed = " << time_speed << endl;
                 if (frames[1] < frames[0])
                 {
                     frames[1]++;
@@ -106,7 +98,6 @@ class Texture
 class Object
 {
     private:
-        // float coordinates[2], sides[2];
         Texture         tex;
     public:
         array<float, 2> coordinates;
@@ -168,7 +159,6 @@ void standart_transparent(Object& obj, float y_line, float time_speed)
 
     if (time_speed)
     {
-        //cout << "Here " << time_speed << endl;
         obj.StartObj(y_line, time_speed);
     }
     else
@@ -284,7 +274,6 @@ void processPlayerMovement(Object &player, float time_speed, float time)
         else
             if (screen_flag.death_check == true && player.GetTexOffsetX() >= 64.f/768.f * (12-2))
             {
-                cout << "Here"<< endl;
                 standart_transparent(player, 0.f, 0.f);
             }
             else
@@ -303,30 +292,13 @@ bool MayGo(Object &map, Object &player, array <float, 8> player_offset)
 
     for (int i = 0; i < 4; i++)
     {
-        //cout << "Player" << endl << player_coordinates[i][0] << "; " << player_coordinates[i][1] << ";" << endl;
         if(((player_coordinates[i][0] > map_block[0][0]) && (player_coordinates[i][0] < map_block[1][0]) && (player_coordinates[i][1] < map_block[0][1]) && (player_coordinates[i][1] > map_block[1][1])) == true)
         {
-            // cout << "Map " << map.coordinates[0] << map.coordinates[1] << endl;
-            // cout << "Map" << endl << "1) map_block"<< map_block[0][0] << "; "<< map_block[0][1] << "; 2nd:" << map_block[1][0] << ";" << map_block[1][1] << "; " << endl;
-            // cout << "2) Sides "<< map.sides[0] << "; "<< map.sides[1] << endl;
-            // cout << "3) M_coord "<< map.coordinates[0] << "; "<< map.coordinates[1] << endl;
-            // cout << "4) P_coord "<< player.coordinates[0] << "; "<< player.coordinates[1] << endl;
-            // cout << "5) player_block"<< player_coordinates[0][0] << "; "<< player_coordinates[0][1] << "; 2nd:" << player_coordinates[1][0] << ";" << player_coordinates[1][1] << "; " << endl;
             return false;
         }
     }
     return true;
 }
-    
-    // return true;
-
-    // float player_coordinates[1][2] = {{player.coordinates[0], player.coordinates[1]}};
-    // for (int i = 0; i < 1; i++)
-    // {
-    //     if (((player.coordinates[0] > map.coordinates[0]) && (player.coordinates[0] < (map.coordinates[0] + map.sides[0]/2.f)) && (player.coordinates[1] > (map.coordinates[1] - map.sides[1]/2.f)) && (player.coordinates[1] < map.coordinates[1])) == true)
-    //         return false;
-    //     return true;
-    // }
 
 struct frame_rate
 {
@@ -425,9 +397,7 @@ public:
 
         if (bosslock_go == -1 && bosslock_open == -1)
         {
-            //bosslock.StartObj(0.f, 0.09);  
             standart_transparent(bosslock, 0.f, bosslock_frame_time);
-            //cout << bosslock.GetTexOffsetX() << endl;
 
             if (bosslock.GetTexOffsetX() >= 144.f/2040.f * (bosslock_frames[0] - 1))
             {
@@ -539,7 +509,6 @@ public:
         }
         else
             cout << "Failed to open file." << endl;       
-        cout << labyrinth << endl;
         file.close();
     }
 
@@ -589,7 +558,6 @@ public:
                     if (keyboard.status == true && player_start == true && (MayGo(map, player, {player.sides[0]/2.f, -player.sides[1] + 0.02f, -player.sides[0]/2.f, -player.sides[1] + 0.02f, (player.sides[0]/2.f - 0.01f), 0.02f, -(player.sides[0]/2.f - 0.01f), 0.02f}) == false))
                     {
                         screen_flag.death_check = true;
-                        //cout << "." << endl;
                     }
                     darkness.coordinates = {map.coordinates[0], map.coordinates[1]};
                     darkness.TexSet({200.f/12000.f, 200.f/200.f}, {0.f, 0.f}, {1, 1});
@@ -601,11 +569,9 @@ public:
                         mapg.darkness_time[0] = glfwGetTime();
                         if (((mapg.darkness_time[0] -  mapg.darkness_time[1]) > mapg.darkness_time[2]) && ((float)rand()/RAND_MAX * 10000) > 9999)
                         {
-                            //cout<< "here"<<endl;
                             mapg.darkness_status = true;
                             mapg.darkness_block_ij = {i, j};
                             mapg.darkness_offset = {200.f/12000.f, 0.f};
-                            //mapg.darkness_frames = {60, 2};
                             
                             darkness.TexSet({200.f/12000.f, 200.f/200.f}, {mapg.darkness_offset[0], mapg.darkness_offset[1]}, {60, 2});
                             standart_transparent(darkness, 0.f/200.f, mapg.darkness_time[2]);
@@ -625,8 +591,6 @@ public:
                         {
                             if (mapg.darkness_offset[0] < 1.f)
                             {
-                                //cout << mapg.darkness_offset[0]<<endl;
-                                //darkness.ChangeTexTime(mapg.darkness_old_time);
                                 mapg.darkness_time[0] = glfwGetTime();
                                 if ((mapg.darkness_time[0] -  mapg.darkness_time[1]) > mapg.darkness_time[2])
                                 {
@@ -661,11 +625,8 @@ public:
                         way_num++;
                     break;
                 case '#':
-                    //cout << "Map" << endl << map.coordinates[0] << "; " << map.coordinates[1] << endl;
                     if (keyboard.status == true && (MayGo(map, player, {0.04f, 0.f, -0.03f, 0.f, 0.04f, 0.f, -0.03f, 0.f}) == false))
                         keyboard.may_go = false;
-                    //if (keyboard.may_go == false)
-                        //cout << keyboard.may_go <<endl;
                     TexSetAndDo({16.f/map_size[0], 16.f/map_size[1]}, {64.f/map_size[0], 0.f/map_size[1]}, {1, 1});
                     break;
                 case '!':
@@ -674,7 +635,6 @@ public:
                         wall_num++;
                         if (keyboard.status == true && (MayGo(map, player, {0.03f, -0.03f, -0.03f, -0.03f, 0.03f, 0.f, -0.3f, 0.f}) == false))
                         {
-                            //cout << "Here" << endl;
                             keyboard.may_go = false;
                         }
                     }
@@ -704,10 +664,8 @@ public:
                     TexSetAndDo({16.f/map_size[0], 16.f/map_size[1]}, {112.f/map_size[0], 16.f/map_size[1]}, {1, 1});
                     if (screen_flag.opacity != 0)
                     {
-                        //cout << screen_flag.opacity << endl;
                         if (screen_flag.opacity > 1 && screen_flag.next_room == true)
                         {
-                            // cout << "Open" << endl;
                             LoadFile(&(string("resources/Maps/") + labyrinth.substr(room_counter, 1) + ".txt")[0]);
                             map.coordinates[0] = -1.f + 0.125/2;
                             map.coordinates[1] = 1.f - 0.125/2;
@@ -735,14 +693,6 @@ public:
                             screen_flag.next_room = true;
                             screen_flag.opacity = mapg.opacity_step = 0.002;
                             cout << "Open" << endl;
-                            // LoadFile(&(string("resources/Maps/") + labyrinth.substr(room_counter, 1) + ".txt")[0]);
-                            // map.coordinates[0] = -1.f + 0.125/2;
-                            // map.coordinates[1] = 1.f - 0.125/2;
-                            // player.coordinates = {-3.f, -3.f};
-                            // i = 16;
-                            // j = 16;
-                            // ResetAllParameters();
-                            // room_counter++;
                         }
                         else
                             if (mapg.chest_open == -1)
@@ -758,7 +708,6 @@ public:
                     
                     if (mrdark.boss_flag == true)
                     {
-                        //cout << mrdark.array_elements[mrdark.array_num[1]] << endl;
                         if (mrdark.array_num[1] < mrdark.array_num[0] && !mrdark.array_elements[mrdark.array_num[1]])
                         {
                             mrdark.block_time[0] = glfwGetTime ();
@@ -773,7 +722,6 @@ public:
                                 if ((MayGo(map, player, {player.sides[0]/2.f, -player.sides[1] + 0.02f, -player.sides[0]/2.f, -player.sides[1] + 0.02f, (player.sides[0]/2.f - 0.01f), 0.02f, -(player.sides[0]/2.f - 0.01f), 0.02f}) == false))
                                 {
                                     screen_flag.death_check = true;
-                                    //cout << "~" << i <<endl;
                                 }
                                 darkness.coordinates = {map.coordinates[0], map.coordinates[1]};
                                 if (mapg.darkness_frames[1] >= mapg.darkness_frames[0])
@@ -835,7 +783,6 @@ public:
                         if (mrdark.boss_flag == true)
                         {
                             screen_flag.death_check = true;
-                            //cout << "B" <<endl;
                         }
                     }
                     if (mrdark.boss_flag == false && !mrdark.boss_count)
@@ -863,7 +810,6 @@ public:
                     {
                         standart_transparent(lever, 0.f, mapg.lever_frame_time);
                         mapg.lever_open = 1;
-                        //cout << "Open" << endl;
                     }
                     else
                     {
@@ -898,7 +844,6 @@ public:
                         {
                             standart_transparent(chest, 0.f, mapg.chest_frame_time);
                             mapg.chest_open = 1;
-                            //cout << "Open" << endl;
                         }
                         else
                         {
@@ -1008,13 +953,9 @@ int main()
     float opacity = 0;
     while (!glfwWindowShouldClose(window))
     {
-        /* Render here */
-        // if (fps.t >= 1)
-        // {
             time = glfwGetTime();
             glClear(GL_COLOR_BUFFER_BIT);
 
-            //processPlayerMovement (player_loc);
             glClearColor(32.0f/255.0f, 39.0f/255.0f, 44.0f/255.0f, 1.0f);
 
             if (screen_flag.death_check == false && screen_flag.victory_check == false)
@@ -1063,17 +1004,7 @@ int main()
                     }
                 }
             }
-            
-
-        //     fps.t = 0.0;
-        // }
-        // else
-        //     fps.t += fps.dt;
-
-        /* Swap front and back buffers */
         glfwSwapBuffers(window);
-
-        /* Poll for and process events */
         glfwPollEvents();
     }
     glfwTerminate();
